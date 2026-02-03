@@ -2,283 +2,185 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>전기 실무 계산기 Pro</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & ReactDOM CDN -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>회식비 정산 계산기</title>
+    
+    <!-- React & Tailwind CDN -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; }
+        body { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     </style>
 </head>
-<body class="bg-[#f8fafc]">
+<body class="bg-gray-100 text-gray-800">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
-
-        // 아이콘 컴포넌트 래퍼 (Lucide 대응)
-        const Icon = ({ name, size = 22, className = "" }) => {
-            useEffect(() => {
-                lucide.createIcons();
-            }, [name]);
-            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+        const Icons = {
+            Receipt: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17V7"/></svg>,
+            Plus: ({size=24}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>,
+            Minus: ({size=24}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/></svg>,
+            Users: ({size=24}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+            Clock: ({size=24}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+            RotateCcw: ({size=24}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
         };
 
-        const Card = ({ title, iconName, children, result, resultLabel = "판정 결과", unit = "", subResult, formula, colorClass="text-blue-600", bgClass="bg-blue-50" }) => (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col h-full hover:shadow-md transition-all duration-300">
-                <div className="flex items-center gap-3 mb-5 text-slate-700">
-                    <div className={`p-2.5 ${bgClass} ${colorClass} rounded-xl shadow-sm flex items-center justify-center`}>
-                        <Icon name={iconName} size={22} />
-                    </div>
-                    <h3 className="font-bold text-lg tracking-tight leading-tight">{title}</h3>
-                </div>
-                <div className="flex-grow space-y-4">
-                    {children}
-                </div>
-                <div className="mt-6 pt-5 border-t border-slate-100">
-                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">{resultLabel}</div>
-                    <div className="flex items-baseline gap-1.5 flex-wrap">
-                        <span className={`text-3xl font-black tracking-tighter ${colorClass}`}>
-                            {result}
-                        </span>
-                        <span className="text-sm font-bold text-slate-400">{unit}</span>
-                    </div>
-                    {formula && (
-                        <div className="text-[10px] font-mono text-slate-400 mt-1 italic">
-                            Formula: {formula}
-                        </div>
-                    )}
-                    {subResult && (
-                        <div className="mt-3 text-[12px] leading-relaxed text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 flex items-start gap-2">
-                            <Icon name="info" size={14} className="mt-0.5 flex-shrink-0 text-slate-400" />
-                            <span>{subResult}</span>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-
-        const InputGroup = ({ label, value, onChange, placeholder, unit, step = "1", type="number" }) => (
-            <div className="w-full">
-                <label className="block text-[11px] font-bold text-slate-500 mb-1.5 ml-1 uppercase tracking-wider">{label}</label>
-                <div className="relative group">
-                    <input
-                        type={type}
-                        value={value}
-                        onChange={(e) => onChange(e.target.value)}
-                        step={step}
-                        className="block w-full rounded-xl border-slate-200 bg-slate-50 border-2 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-sm font-semibold p-3 pr-12 transition-all outline-none"
-                        placeholder={placeholder}
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                        <span className="text-slate-400 font-bold text-[10px]">{unit}</span>
-                    </div>
-                </div>
-            </div>
-        );
-
-        const PhaseSelector = ({ phase, setPhase, label1 = "단상", label3 = "3상" }) => (
-            <div className="flex bg-slate-100 p-1.5 rounded-xl mb-4">
-                <button onClick={() => setPhase(1)} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${phase === 1 ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>{label1}</button>
-                <button onClick={() => setPhase(3)} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${phase === 3 ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>{label3}</button>
-            </div>
-        );
-
-        const UnitSelector = ({ unit, setUnit }) => (
-            <div className="flex bg-slate-100 p-1.5 rounded-xl mb-4 w-full">
-                <button onClick={() => setUnit('kW')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${unit === 'kW' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}>kW</button>
-                <button onClick={() => setUnit('HP')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${unit === 'HP' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}>HP</button>
-            </div>
-        );
-
-        function App() {
-            // States
-            const [motorPhase, setMotorPhase] = useState(3);
-            const [motorUnit, setMotorUnit] = useState('kW');
-            const [motorCap, setMotorCap] = useState(15);
-            const [motorV, setMotorV] = useState(380);
-            const [motorEff, setMotorEff] = useState(0.9);
-            const [motorPf, setMotorPf] = useState(0.85);
-
-            const [powerPhase, setPowerPhase] = useState(1);
-            const [powerV, setPowerV] = useState(220);
-            const [powerI, setPowerI] = useState(15);
-            const [powerIR, setPowerIR] = useState(10);
-            const [powerIS, setPowerIS] = useState(20);
-            const [powerIT, setPowerIT] = useState(30);
-
-            const [currPhase, setCurrPhase] = useState(1);
-            const [currP, setCurrP] = useState(3300);
-            const [currV, setCurrV] = useState(220);
-
-            const [ubR, setUbR] = useState(10);
-            const [ubS, setUbS] = useState(20);
-            const [ubT, setUbT] = useState(30);
-
-            const [leakSupply, setLeakSupply] = useState(50);
-            const [leakMeasured, setLeakMeasured] = useState(0.1);
-
-            const [pfLoad, setPfLoad] = useState(100);
-            const [pfBefore, setPfBefore] = useState(0.8);
-            const [pfAfter, setPfAfter] = useState(0.95);
-
-            const [trCap, setTrCap] = useState(500);
-            const [trV, setTrV] = useState(6600);
-
-            // Calculations
-            const motorCurrent = () => {
-                let watts = motorCap * 1000;
-                if (motorUnit === 'HP') watts = motorCap * 745.7;
-                const den = motorPhase === 3 ? Math.sqrt(3) * motorV * motorEff * motorPf : motorV * motorEff * motorPf;
-                return (watts / den).toFixed(2);
+        const App = () => {
+            // 가격 설정 (소고기 부위별 45,000원 통일)
+            const PRICES = {
+                pork: 15000,
+                soju: 5000,
+                soda: 4000,
+                beef_d: 45000, // 등심
+                beef_g: 45000, // 갈비살
+                beef_s: 45000, // 살치살
+                beef_a: 45000  // 안창살
             };
 
-            const unbalance = () => {
-                const avg = (parseFloat(ubR) + parseFloat(ubS) + parseFloat(ubT)) / 3;
-                if (avg === 0) return "0.0";
-                const maxDiff = Math.max(Math.abs(ubR - avg), Math.abs(ubS - avg), Math.abs(ubT - avg));
-                return ((maxDiff / avg) * 100).toFixed(1);
+            const ITEMS = {
+                beef_d: { label: '소 등심 (1인분)', icon: '🐂', price: PRICES.beef_d },
+                beef_g: { label: '소 갈비살 (1인분)', icon: '🍖', price: PRICES.beef_g },
+                beef_s: { label: '소 살치살 (1인분)', icon: '🥩', price: PRICES.beef_s },
+                beef_a: { label: '소 안창살 (1인분)', icon: '🥓', price: PRICES.beef_a },
+                pork: { label: '돼지고기 (1인분)', icon: '🐖', price: PRICES.pork },
+                soju: { label: '소주 (1병)', icon: '🍾', price: PRICES.soju },
+                soda: { label: '음료수 (1병)', icon: '🥤', price: PRICES.soda },
             };
+
+            // 초기값 상태 (모든 메뉴 0개부터 시작)
+            const [counts, setCounts] = React.useState({
+                beef_d: 0, beef_g: 0, beef_s: 0, beef_a: 0,
+                pork: 0, soju: 0, soda: 0
+            });
+            const [logs, setLogs] = React.useState([]);
+            const [peopleCount, setPeopleCount] = React.useState(1);
+
+            // 전체 금액 계산
+            const totalAmount = Object.keys(ITEMS).reduce((sum, key) => {
+                return sum + (counts[key] * ITEMS[key].price);
+            }, 0);
+
+            const perPersonAmount = peopleCount > 0 ? Math.floor(totalAmount / peopleCount) : 0;
+
+            const handleUpdate = (type, delta) => {
+                const currentCount = counts[type];
+                if (currentCount + delta < 0) return;
+                
+                setCounts(prev => ({ ...prev, [type]: prev[type] + delta }));
+                
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                const newLog = {
+                    id: Date.now(),
+                    itemName: ITEMS[type].label.split(' (')[0],
+                    delta,
+                    time: timeString
+                };
+                setLogs(prev => [newLog, ...prev]);
+            };
+
+            const handleReset = () => {
+                if (confirm('모든 기록을 초기화할까요?')) {
+                    setCounts({
+                        beef_d: 0, beef_g: 0, beef_s: 0, beef_a: 0,
+                        pork: 0, soju: 0, soda: 0
+                    });
+                    setLogs([]);
+                    setPeopleCount(1);
+                }
+            };
+
+            const formatMoney = (amount) => amount.toLocaleString('ko-KR');
 
             return (
-                <div className="max-w-7xl mx-auto p-4 md:p-8">
-                    <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between border-b border-slate-200 pb-8">
-                        <div>
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest mb-3 border border-blue-100">
-                                Electrical Tools Pro
+                <div className="min-h-screen bg-gray-100 py-6 px-4 font-sans select-none max-w-md mx-auto">
+                    <div className="space-y-4">
+                        {/* 상단 총액 */}
+                        <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 sticky top-0 z-10">
+                            <div className="bg-slate-800 p-4 text-white text-center">
+                                <h1 className="text-lg font-bold flex items-center justify-center gap-2">
+                                    <Icons.Receipt /> 정산 계산기
+                                </h1>
                             </div>
-                            <h1 className="text-2xl font-black text-slate-900 flex items-center gap-3 tracking-tight">
-                                <Icon name="calculator" size={30} className="text-blue-600" />
-                                전기 실무 계산기 <span className="text-blue-600">Pro</span>
-                            </h1>
-                        </div>
-                        <div className="mt-4 md:mt-0 text-right font-bold text-[10px] text-slate-400 uppercase tracking-widest">
-                            GITHUB DEPLOY VERSION 3.2
-                        </div>
-                    </header>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        <Card 
-                            title="모터 정격전류 (정밀)" iconName="settings" 
-                            result={motorCurrent()} unit="A" formula={motorPhase === 3 ? "P / (√3 * V * η * cosΘ)" : "P / (V * η * cosΘ)"}
-                            colorClass="text-emerald-600" bgClass="bg-emerald-50"
-                        >
-                            <PhaseSelector phase={motorPhase} setPhase={setMotorPhase} />
-                            <UnitSelector unit={motorUnit} setUnit={setMotorUnit} />
-                            <div className="grid grid-cols-2 gap-3">
-                                <InputGroup label="용량" value={motorCap} onChange={setMotorCap} unit={motorUnit} />
-                                <InputGroup label="전압" value={motorV} onChange={setMotorV} unit="V" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <InputGroup label="효율" value={motorEff} onChange={setMotorEff} unit="η" step="0.01" />
-                                <InputGroup label="역률" value={motorPf} onChange={setMotorPf} unit="cos" step="0.01" />
-                            </div>
-                        </Card>
-
-                        <Card 
-                            title="전력 계산 (P)" iconName="zap" 
-                            result={powerPhase === 1 ? (powerV * powerI).toLocaleString() : (powerV * (parseFloat(powerIR)+parseFloat(powerIS)+parseFloat(powerIT))).toLocaleString()} 
-                            unit="W" formula={powerPhase === 1 ? "V * I" : "V_phase * ΣI_phase"}
-                        >
-                            <PhaseSelector phase={powerPhase} setPhase={setPowerPhase} label3="3상 4선식" />
-                            {powerPhase === 1 ? (
-                                <div className="grid grid-cols-2 gap-3">
-                                    <InputGroup label="전압" value={powerV} onChange={setPowerV} unit="V" />
-                                    <InputGroup label="전류" value={powerI} onChange={setPowerI} unit="A" />
+                            <div className="p-5 text-center">
+                                <div className="text-3xl font-extrabold text-slate-800 tracking-tight">
+                                    {formatMoney(totalAmount)}<span className="text-xl ml-1 text-gray-400">원</span>
                                 </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    <InputGroup label="상전압" value={powerV} onChange={setPowerV} unit="V" />
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <InputGroup label="R상" value={powerIR} onChange={setPowerIR} unit="A" />
-                                        <InputGroup label="S상" value={powerIS} onChange={setPowerIS} unit="A" />
-                                        <InputGroup label="T상" value={powerIT} onChange={setPowerIT} unit="A" />
+                            </div>
+                        </div>
+
+                        {/* 메뉴 리스트 (소고기부터 출력) */}
+                        <div className="space-y-2">
+                            {Object.keys(ITEMS).map((key) => (
+                                <div key={key} className={`bg-white rounded-xl shadow-sm p-3 flex items-center justify-between border ${key.startsWith('beef') ? 'border-orange-100 bg-orange-50/20' : 'border-gray-50'}`}>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-xl shadow-inner">
+                                            {ITEMS[key].icon}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-gray-800 text-sm">{ITEMS[key].label}</h3>
+                                            <p className="text-slate-500 text-xs">{formatMoney(ITEMS[key].price)}원</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 bg-gray-100 rounded-lg p-1">
+                                        <button onClick={() => handleUpdate(key, -1)} disabled={counts[key] === 0}
+                                            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${counts[key] === 0 ? 'text-gray-300' : 'bg-white text-red-500 shadow-sm'}`}>
+                                            <Icons.Minus size={16} />
+                                        </button>
+                                        <span className={`w-6 text-center font-bold text-sm ${counts[key] > 0 ? 'text-slate-800' : 'text-gray-400'}`}>{counts[key]}</span>
+                                        <button onClick={() => handleUpdate(key, 1)}
+                                            className="w-9 h-9 bg-white text-blue-600 rounded-lg shadow-sm flex items-center justify-center">
+                                            <Icons.Plus size={16} />
+                                        </button>
                                     </div>
                                 </div>
-                            )}
-                        </Card>
+                            ))}
+                        </div>
 
-                        <Card 
-                            title="부하 전류 (I)" iconName="activity" 
-                            result={currPhase === 1 ? (currP / currV).toFixed(2) : (currP / (Math.sqrt(3) * currV)).toFixed(2)} 
-                            unit="A" formula={currPhase === 1 ? "P / V" : "P / (√3 * V)"}
-                            colorClass="text-indigo-600" bgClass="bg-indigo-50"
-                        >
-                            <PhaseSelector phase={currPhase} setPhase={setCurrPhase} />
-                            <div className="grid grid-cols-2 gap-3">
-                                <InputGroup label="전력" value={currP} onChange={setCurrP} unit="W" />
-                                <InputGroup label="전압" value={currV} onChange={setCurrV} unit="V" />
+                        {/* N빵 계산 */}
+                        <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="font-bold text-gray-700 flex items-center gap-2 text-sm"><Icons.Users size={16} /> 인원수</h3>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => setPeopleCount(p => Math.max(1, p - 1))} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"><Icons.Minus size={14}/></button>
+                                    <span className="font-bold w-6 text-center">{peopleCount}</span>
+                                    <button onClick={() => setPeopleCount(p => p + 1)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"><Icons.Plus size={14}/></button>
+                                </div>
                             </div>
-                        </Card>
+                            <div className="bg-blue-600 rounded-lg p-3 flex justify-between items-center text-white">
+                                <span className="text-xs font-medium">1인당 금액</span>
+                                <span className="text-lg font-bold">{formatMoney(perPersonAmount)}원</span>
+                            </div>
+                        </div>
 
-                        <Card 
-                            title="3상 불평형률" iconName="scale" 
-                            result={unbalance()} unit="%" formula="(MaxDiff / Avg) * 100"
-                            subResult={unbalance() > 30 ? "⚠️ 불량 (상 평형 조정 필요)" : "✅ 양호 (30% 이하)"}
-                            colorClass={unbalance() > 30 ? "text-red-600" : "text-blue-600"}
-                            bgClass={unbalance() > 30 ? "bg-red-50" : "bg-blue-50"}
-                        >
-                            <div className="grid grid-cols-3 gap-2">
-                                <InputGroup label="R (A)" value={ubR} onChange={setUbR} unit="A" />
-                                <InputGroup label="S (A)" value={ubS} onChange={setUbS} unit="A" />
-                                <InputGroup label="T (A)" value={ubT} onChange={setUbT} unit="A" />
+                        {/* 최근 로그 */}
+                        <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+                            <h3 className="font-bold text-gray-700 text-xs mb-3 flex items-center gap-2"><Icons.Clock size={14} /> 주문 기록 (최신 10개)</h3>
+                            <div className="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
+                                {logs.length === 0 ? <p className="text-center text-gray-400 text-xs py-2">주문 내역이 없습니다.</p> : 
+                                    logs.slice(0, 10).map(log => (
+                                    <div key={log.id} className="flex justify-between items-center text-[11px] border-b border-gray-50 pb-1">
+                                        <span className="text-gray-400">{log.time}</span>
+                                        <span className="text-gray-700 font-medium">{log.itemName}</span>
+                                        <span className={log.delta > 0 ? 'text-blue-500' : 'text-red-500'}>{log.delta > 0 ? '+1' : '취소'}</span>
+                                    </div>
+                                ))}
                             </div>
-                        </Card>
+                        </div>
 
-                        <Card 
-                            title="누설전류 판정" iconName="shield-alert" 
-                            result={leakMeasured <= (leakSupply/2000*1000) ? "적합" : "부적합"}
-                            formula="I_rated / 2000"
-                            subResult={`KEC 기준 한계: ${(leakSupply/2000*1000).toFixed(2)} mA`}
-                            colorClass={leakMeasured <= (leakSupply/2000*1000) ? "text-blue-600" : "text-red-600"}
-                            bgClass={leakMeasured <= (leakSupply/2000*1000) ? "bg-blue-50" : "bg-red-50"}
-                        >
-                            <div className="grid grid-cols-2 gap-3">
-                                <InputGroup label="정격전류" value={leakSupply} onChange={setLeakSupply} unit="A" />
-                                <InputGroup label="측정누설" value={leakMeasured} onChange={setLeakMeasured} unit="mA" step="0.01" />
-                            </div>
-                        </Card>
-
-                        <Card 
-                            title="콘덴서 용량" iconName="battery-charging" 
-                            result={(pfLoad * (Math.sqrt(1/(pfBefore*pfBefore)-1) - Math.sqrt(1/(pfAfter*pfAfter)-1))).toFixed(2)} 
-                            unit="kVAR" formula="P * (tanΘ1 - tanΘ2)"
-                            colorClass="text-cyan-600" bgClass="bg-cyan-50"
-                        >
-                            <InputGroup label="유효전력" value={pfLoad} onChange={setPfLoad} unit="kW" />
-                            <div className="grid grid-cols-2 gap-3">
-                                <InputGroup label="현재역률" value={pfBefore} onChange={setPfBefore} unit="cos" step="0.01" />
-                                <InputGroup label="목표역률" value={pfAfter} onChange={setPfAfter} unit="cos" step="0.01" />
-                            </div>
-                        </Card>
-
-                        <Card 
-                            title="변압기 정격" iconName="disc" 
-                            result={trV > 0 ? ((trCap * 1000) / (Math.sqrt(3) * trV)).toFixed(2) : 0} 
-                            unit="A" formula="S / (√3 * V)"
-                            colorClass="text-purple-600" bgClass="bg-purple-50"
-                        >
-                            <div className="grid grid-cols-1 gap-3">
-                                <InputGroup label="용량" value={trCap} onChange={setTrCap} unit="kVA" />
-                                <InputGroup label="전압" value={trV} onChange={setTrV} unit="V" />
-                            </div>
-                        </Card>
+                        <button onClick={handleReset} className="w-full py-2 text-gray-400 flex items-center justify-center gap-2 text-[11px] hover:text-red-500">
+                            <Icons.RotateCcw size={12} /> 전체 데이터 초기화
+                        </button>
                     </div>
-                    
-                    <footer className="mt-16 text-center text-slate-400 text-[10px] pb-12 border-t border-slate-200 pt-10">
-                        <p>본 계산기는 교육 및 참고용이며, 실제 시공 시 KEC 법규를 반드시 재확인하십시오.</p>
-                    </footer>
                 </div>
             );
-        }
+        };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
