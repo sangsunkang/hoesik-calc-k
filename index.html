@@ -16,9 +16,14 @@
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .category-label { position: relative; display: inline-block; padding-left: 1rem; margin-bottom: 0.5rem; font-weight: 800; font-size: 0.875rem; }
+        .category-label::before { content: ''; position: absolute; left: 0; top: 0.2rem; bottom: 0.2rem; width: 4px; border-radius: 2px; }
+        .label-beef::before { background-color: #ef4444; }
+        .label-pork::before { background-color: #f97316; }
+        .label-drink::before { background-color: #3b82f6; }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-slate-50 text-slate-900">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -32,40 +37,58 @@
         };
 
         const App = () => {
-            // 가격 설정 (소고기 부위별 45,000원 통일)
+            // 가격 설정
             const PRICES = {
+                beef_d: 45000, beef_g: 45000, beef_s: 45000, beef_a: 45000,
                 pork: 15000,
-                soju: 5000,
-                soda: 4000,
-                beef_d: 45000, // 등심
-                beef_g: 45000, // 갈비살
-                beef_s: 45000, // 살치살
-                beef_a: 45000  // 안창살
+                soju: 5000, beer: 6000, soda: 4000
             };
 
-            const ITEMS = {
-                beef_d: { label: '소 등심 (1인분)', icon: '🐂', price: PRICES.beef_d },
-                beef_g: { label: '소 갈비살 (1인분)', icon: '🍖', price: PRICES.beef_g },
-                beef_s: { label: '소 살치살 (1인분)', icon: '🥩', price: PRICES.beef_s },
-                beef_a: { label: '소 안창살 (1인분)', icon: '🥓', price: PRICES.beef_a },
-                pork: { label: '돼지고기 (1인분)', icon: '🐖', price: PRICES.pork },
-                soju: { label: '소주 (1병)', icon: '🍾', price: PRICES.soju },
-                soda: { label: '음료수 (1병)', icon: '🥤', price: PRICES.soda },
-            };
+            // 카테고리별 아이템 구성
+            const CATEGORIES = [
+                {
+                    id: 'beef',
+                    name: '🐂 소고기 메뉴',
+                    class: 'label-beef',
+                    items: {
+                        beef_d: { label: '소 등심', icon: '🥩', price: PRICES.beef_d },
+                        beef_g: { label: '소 갈비살', icon: '🍖', price: PRICES.beef_g },
+                        beef_s: { label: '소 살치살', icon: '🔥', price: PRICES.beef_s },
+                        beef_a: { label: '소 안창살', icon: '✨', price: PRICES.beef_a },
+                    }
+                },
+                {
+                    id: 'pork',
+                    name: '🐖 돼지고기 메뉴',
+                    class: 'label-pork',
+                    items: {
+                        pork: { label: '돼지고기 (1인분)', icon: '🥓', price: PRICES.pork },
+                    }
+                },
+                {
+                    id: 'drink',
+                    name: '🍺 주류 및 음료',
+                    class: 'label-drink',
+                    items: {
+                        soju: { label: '소주 (1병)', icon: '🧪', price: PRICES.soju },
+                        beer: { label: '맥주 (1병)', icon: '🍺', price: PRICES.beer },
+                        soda: { label: '음료수 (1병)', icon: '🥤', price: PRICES.soda },
+                    }
+                }
+            ];
 
-            // 초기값 상태 (모든 메뉴 0개부터 시작)
+            // 모든 아이템 평면 구조 (계산용)
+            const ALL_ITEMS = CATEGORIES.reduce((acc, cat) => ({ ...acc, ...cat.items }), {});
+
+            // 상태 관리
             const [counts, setCounts] = React.useState({
                 beef_d: 0, beef_g: 0, beef_s: 0, beef_a: 0,
-                pork: 0, soju: 0, soda: 0
+                pork: 0, soju: 0, beer: 0, soda: 0
             });
             const [logs, setLogs] = React.useState([]);
             const [peopleCount, setPeopleCount] = React.useState(1);
 
-            // 전체 금액 계산
-            const totalAmount = Object.keys(ITEMS).reduce((sum, key) => {
-                return sum + (counts[key] * ITEMS[key].price);
-            }, 0);
-
+            const totalAmount = Object.keys(ALL_ITEMS).reduce((sum, key) => sum + (counts[key] * ALL_ITEMS[key].price), 0);
             const perPersonAmount = peopleCount > 0 ? Math.floor(totalAmount / peopleCount) : 0;
 
             const handleUpdate = (type, delta) => {
@@ -78,7 +101,7 @@
                 const timeString = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
                 const newLog = {
                     id: Date.now(),
-                    itemName: ITEMS[type].label.split(' (')[0],
+                    itemName: ALL_ITEMS[type].label,
                     delta,
                     time: timeString
                 };
@@ -87,10 +110,7 @@
 
             const handleReset = () => {
                 if (confirm('모든 기록을 초기화할까요?')) {
-                    setCounts({
-                        beef_d: 0, beef_g: 0, beef_s: 0, beef_a: 0,
-                        pork: 0, soju: 0, soda: 0
-                    });
+                    setCounts({ beef_d: 0, beef_g: 0, beef_s: 0, beef_a: 0, pork: 0, soju: 0, beer: 0, soda: 0 });
                     setLogs([]);
                     setPeopleCount(1);
                 }
@@ -99,84 +119,103 @@
             const formatMoney = (amount) => amount.toLocaleString('ko-KR');
 
             return (
-                <div className="min-h-screen bg-gray-100 py-6 px-4 font-sans select-none max-w-md mx-auto">
-                    <div className="space-y-4">
-                        {/* 상단 총액 */}
-                        <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 sticky top-0 z-10">
-                            <div className="bg-slate-800 p-4 text-white text-center">
-                                <h1 className="text-lg font-bold flex items-center justify-center gap-2">
-                                    <Icons.Receipt /> 정산 계산기
+                <div className="min-h-screen bg-slate-50 pb-10 px-4 font-sans select-none max-w-md mx-auto">
+                    <div className="pt-6 space-y-4">
+                        {/* 상단 총액 헤더 */}
+                        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 sticky top-4 z-20">
+                            <div className="bg-slate-900 p-4 text-white flex justify-between items-center">
+                                <h1 className="text-base font-bold flex items-center gap-2">
+                                    <Icons.Receipt /> 실시간 정산
                                 </h1>
+                                <button onClick={handleReset} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400">
+                                    <Icons.RotateCcw size={18} />
+                                </button>
                             </div>
-                            <div className="p-5 text-center">
-                                <div className="text-3xl font-extrabold text-slate-800 tracking-tight">
-                                    {formatMoney(totalAmount)}<span className="text-xl ml-1 text-gray-400">원</span>
+                            <div className="p-6 text-center bg-gradient-to-b from-white to-slate-50">
+                                <p className="text-slate-400 text-xs mb-1 font-medium">합계 금액</p>
+                                <div className="text-4xl font-black text-slate-900 tracking-tighter">
+                                    {formatMoney(totalAmount)}<span className="text-xl ml-1 text-slate-400 font-normal">원</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* 메뉴 리스트 (소고기부터 출력) */}
-                        <div className="space-y-2">
-                            {Object.keys(ITEMS).map((key) => (
-                                <div key={key} className={`bg-white rounded-xl shadow-sm p-3 flex items-center justify-between border ${key.startsWith('beef') ? 'border-orange-100 bg-orange-50/20' : 'border-gray-50'}`}>
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-xl shadow-inner">
-                                            {ITEMS[key].icon}
+                        {/* 카테고리별 메뉴 */}
+                        {CATEGORIES.map(category => (
+                            <div key={category.id} className="pt-2">
+                                <div className={`category-label ${category.class} text-slate-500`}>
+                                    {category.name}
+                                </div>
+                                <div className="space-y-2">
+                                    {Object.keys(category.items).map(key => (
+                                        <div key={key} className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between border border-slate-100 active:bg-slate-50 transition-colors">
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-2xl">{category.items[key].icon}</div>
+                                                <div>
+                                                    <h3 className="font-bold text-slate-800 text-sm leading-tight">{category.items[key].label}</h3>
+                                                    <p className="text-slate-400 text-xs mt-0.5">{formatMoney(category.items[key].price)}원</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 bg-slate-100 rounded-xl p-1">
+                                                <button onClick={() => handleUpdate(key, -1)} disabled={counts[key] === 0}
+                                                    className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${counts[key] === 0 ? 'text-slate-300' : 'bg-white text-rose-500 shadow-sm active:scale-90'}`}>
+                                                    <Icons.Minus size={18} />
+                                                </button>
+                                                <span className={`w-6 text-center font-extrabold text-sm ${counts[key] > 0 ? 'text-slate-900' : 'text-slate-400'}`}>
+                                                    {counts[key]}
+                                                </span>
+                                                <button onClick={() => handleUpdate(key, 1)}
+                                                    className="w-10 h-10 bg-white text-blue-600 rounded-lg shadow-sm flex items-center justify-center active:scale-90 transition-all">
+                                                    <Icons.Plus size={18} />
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="font-bold text-gray-800 text-sm">{ITEMS[key].label}</h3>
-                                            <p className="text-slate-500 text-xs">{formatMoney(ITEMS[key].price)}원</p>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* N빵 계산 섹션 */}
+                        <div className="bg-indigo-900 rounded-2xl shadow-lg p-5 text-white">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2 opacity-80 text-sm">
+                                    <Icons.Users size={18} /> 참석 인원
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <button onClick={() => setPeopleCount(p => Math.max(1, p - 1))} className="w-8 h-8 rounded-full bg-indigo-800 flex items-center justify-center active:bg-indigo-700"><Icons.Minus size={14}/></button>
+                                    <span className="font-bold text-lg w-6 text-center">{peopleCount}</span>
+                                    <button onClick={() => setPeopleCount(p => p + 1)} className="w-8 h-8 rounded-full bg-indigo-800 flex items-center justify-center active:bg-indigo-700"><Icons.Plus size={14}/></button>
+                                </div>
+                            </div>
+                            <div className="flex justify-between items-end border-t border-indigo-800 pt-4">
+                                <span className="text-xs font-medium opacity-60 uppercase tracking-wider">1인당 결제액</span>
+                                <span className="text-2xl font-black">{formatMoney(perPersonAmount)}원</span>
+                            </div>
+                        </div>
+
+                        {/* 주문 로그 */}
+                        <div className="bg-white rounded-2xl shadow-sm p-5 border border-slate-200">
+                            <div className="flex items-center justify-between mb-4 border-b border-slate-50 pb-2">
+                                <h3 className="font-bold text-slate-800 text-xs flex items-center gap-2 uppercase tracking-widest"><Icons.Clock size={14} /> 주문 타임라인</h3>
+                                <span className="text-[10px] text-slate-400">최근 15개</span>
+                            </div>
+                            <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                                {logs.length === 0 ? (
+                                    <div className="text-center py-6 text-slate-300 text-xs italic">기록된 주문이 없습니다.</div>
+                                ) : (
+                                    logs.slice(0, 15).map(log => (
+                                        <div key={log.id} className="flex justify-between items-center animate-fadeIn">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-[10px] font-mono text-slate-300 bg-slate-50 px-1.5 py-0.5 rounded">{log.time}</span>
+                                                <span className="text-xs text-slate-600 font-medium">{log.itemName}</span>
+                                            </div>
+                                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${log.delta > 0 ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                {log.delta > 0 ? '+ 1개' : '취소됨'}
+                                            </span>
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 bg-gray-100 rounded-lg p-1">
-                                        <button onClick={() => handleUpdate(key, -1)} disabled={counts[key] === 0}
-                                            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${counts[key] === 0 ? 'text-gray-300' : 'bg-white text-red-500 shadow-sm'}`}>
-                                            <Icons.Minus size={16} />
-                                        </button>
-                                        <span className={`w-6 text-center font-bold text-sm ${counts[key] > 0 ? 'text-slate-800' : 'text-gray-400'}`}>{counts[key]}</span>
-                                        <button onClick={() => handleUpdate(key, 1)}
-                                            className="w-9 h-9 bg-white text-blue-600 rounded-lg shadow-sm flex items-center justify-center">
-                                            <Icons.Plus size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* N빵 계산 */}
-                        <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="font-bold text-gray-700 flex items-center gap-2 text-sm"><Icons.Users size={16} /> 인원수</h3>
-                                <div className="flex items-center gap-2">
-                                    <button onClick={() => setPeopleCount(p => Math.max(1, p - 1))} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"><Icons.Minus size={14}/></button>
-                                    <span className="font-bold w-6 text-center">{peopleCount}</span>
-                                    <button onClick={() => setPeopleCount(p => p + 1)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"><Icons.Plus size={14}/></button>
-                                </div>
-                            </div>
-                            <div className="bg-blue-600 rounded-lg p-3 flex justify-between items-center text-white">
-                                <span className="text-xs font-medium">1인당 금액</span>
-                                <span className="text-lg font-bold">{formatMoney(perPersonAmount)}원</span>
+                                    ))
+                                )}
                             </div>
                         </div>
-
-                        {/* 최근 로그 */}
-                        <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-                            <h3 className="font-bold text-gray-700 text-xs mb-3 flex items-center gap-2"><Icons.Clock size={14} /> 주문 기록 (최신 10개)</h3>
-                            <div className="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
-                                {logs.length === 0 ? <p className="text-center text-gray-400 text-xs py-2">주문 내역이 없습니다.</p> : 
-                                    logs.slice(0, 10).map(log => (
-                                    <div key={log.id} className="flex justify-between items-center text-[11px] border-b border-gray-50 pb-1">
-                                        <span className="text-gray-400">{log.time}</span>
-                                        <span className="text-gray-700 font-medium">{log.itemName}</span>
-                                        <span className={log.delta > 0 ? 'text-blue-500' : 'text-red-500'}>{log.delta > 0 ? '+1' : '취소'}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <button onClick={handleReset} className="w-full py-2 text-gray-400 flex items-center justify-center gap-2 text-[11px] hover:text-red-500">
-                            <Icons.RotateCcw size={12} /> 전체 데이터 초기화
-                        </button>
                     </div>
                 </div>
             );
